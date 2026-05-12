@@ -5,5 +5,5 @@ namespace RealEstateReport.Clients.Interfaces;
 
 public interface IPartnerApiClient
 {
-    public Task<PartnerApiListingResponseDto> GetListingsAsync(ListingApiRequestOptions options);
+    public Task<PartnerApiListingResponseDto> GetListingsAsync(int page, ListingApiRequestOptions options);
 }
