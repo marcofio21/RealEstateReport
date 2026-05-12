@@ -1,8 +1,6 @@
-﻿using RealEstateReport.Models.Domain.Interfaces;
+﻿namespace RealEstateReport.Models.Domain;
 
-namespace RealEstateReport.Models.Domain;
-
-public class RealEstateAgent : IEntity
+public class RealEstateAgent
 {
     public required int Id { get; init; }
 

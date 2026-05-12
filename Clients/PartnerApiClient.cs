@@ -1,36 +1,50 @@
-﻿using RealEstateReport.Clients.Interfaces;
+﻿using Microsoft.Extensions.Options;
+using RealEstateReport.Clients.Interfaces;
 using RealEstateReport.Models;
 using RealEstateReport.Models.Dtos;
+using RealEstateReport.Settings;
 using System.Text.Json;
 using System.Threading.RateLimiting;
 
 namespace RealEstateReport.Clients
 {
-    public class PartnerApiClient(HttpClient _httpClient, RateLimiter _rateLimiter) : IPartnerApiClient
+    public class PartnerApiClient(IOptions<PartnerApiSettings> options, HttpClient httpClient, RateLimiter rateLimiter) : IPartnerApiClient
     {
+        private readonly PartnerApiSettings _settings = options.Value;
 
-        //[TODO] These values must come from the appsettings.json file. Base URL + Key
-        private readonly string _baseUrl = "http://partnerapi.funda.nl/feeds/Aanbod.svc/";
-        private readonly string _key = "76666a29898f491480386d966b75f949";
-        //------//
-
+        /// <summary>
+        /// Retrieves a page of real estate listings from the Partner API.
+        /// </summary>
+        /// <param name="page">The page number to retrieve.</param>
+        /// <param name="options">Request options used to filter listings.</param>
+        /// <returns>
+        /// A <see cref="PartnerApiListingResponseDto"/> containing the paginated listing results.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when the API response is empty or cannot be deserialized.
+        /// </exception>
+        /// <exception cref="HttpRequestException">
+        /// Thrown when the HTTP request to the Partner API fails.
+        /// </exception>
         public async Task<PartnerApiListingResponseDto> GetListingsAsync(int page, ListingApiRequestOptions options)
         {
-            using var lease = await _rateLimiter.AcquireAsync(1);
+            using var lease = await rateLimiter.AcquireAsync(1);
             if (!lease.IsAcquired)
                 throw new Exception("Rate limit exceeded");
 
             // URL-encode each location segment before building the path (e.g. "Den Haag" => "Den%20Haag")
             var locations = string.Join("/", options.Locations.Select(Uri.EscapeDataString));
 
-            var url = $"{_baseUrl}JSON/{_key}/" +
+            var url = $"{_settings.BaseUrl}JSON/{_settings.Key}/" +
                        $"?type={options.ListingType}" +
                        $"&zo=/{locations}/" +
                        (options.IsGardenRequired ? "tuin/" : "") +
                        $"&page={page}&pagesize={options.PageSize}";
 
             try {
-                using HttpResponseMessage response = await _httpClient.GetAsync(url);
+                using HttpResponseMessage response = await httpClient.GetAsync(url);
+                // The Partner API may occasionally throttle or reject requests even below the documented limit.
+                // A conservative rate limiter and basic retry strategy are used to mitigate transient failures.
                 response.EnsureSuccessStatusCode();
 
                 var json = await response.Content.ReadAsStringAsync();

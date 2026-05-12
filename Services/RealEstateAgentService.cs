@@ -6,11 +6,16 @@ using RealEstateReport.Services.Interfaces;
 
 namespace RealEstateReport.Services
 {
-    public class RealEstateAgentService(IPartnerApiClient _partnerApiClient) : IRealEstateAgentService
+    public class RealEstateAgentService(IPartnerApiClient partnerApiClient) : IRealEstateAgentService
     {
-        private readonly IPartnerApiClient _partnerApiClient = _partnerApiClient;
+        private readonly IPartnerApiClient _partnerApiClient = partnerApiClient;
 
-        public async Task<Dictionary<int, RealEstateAgent>> GetMostActiveRealEstateAgentsAsync(RealEstateAgentRankingOptions options)
+        /// <summary>
+        /// Retrieves a dictionary of real estate agents ranked by the number of listings.
+        /// </summary>
+        /// <param name="options">Configuration options used to filter and control the ranking process.</param>
+        /// <returns> A dictionary where the key is the agent ID and the value contains aggregated listing data per agent.</returns>
+        public async Task<Dictionary<int, RealEstateAgent>> GetTopRealEstateAgentsByListingsAsync(RealEstateAgentRankingOptions options)
         {
             var mostActiveRealEstateAgents = new Dictionary<int, RealEstateAgent>();
             var partnerApiConfig = new ListingApiRequestOptions

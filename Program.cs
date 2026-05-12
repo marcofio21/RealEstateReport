@@ -5,6 +5,7 @@ using RealEstateReport.Clients;
 using RealEstateReport.Clients.Interfaces;
 using RealEstateReport.Services;
 using RealEstateReport.Services.Interfaces;
+using RealEstateReport.Settings;
 using System.Threading.RateLimiting;
 
 var host = Host.CreateDefaultBuilder(args)
@@ -14,6 +15,10 @@ var host = Host.CreateDefaultBuilder(args)
     })
     .ConfigureServices((context, services) =>
     {
+        // Settings
+        services.Configure<PartnerApiSettings>(
+            context.Configuration.GetSection("PartnerApi"));
+
         // HttpClient
         services.AddHttpClient<IPartnerApiClient, PartnerApiClient>();
 
@@ -23,7 +28,7 @@ var host = Host.CreateDefaultBuilder(args)
         {
             return new FixedWindowRateLimiter(new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 80,
+                PermitLimit = 60,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = int.MaxValue,
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst
@@ -35,8 +40,7 @@ var host = Host.CreateDefaultBuilder(args)
 using var scope = host.Services.CreateScope();
 var service = scope.ServiceProvider.GetRequiredService<IRealEstateAgentService>();
 
-//[TODO] get hard coded data from the appsettings
-var generalChart = await service.GetMostActiveRealEstateAgentsAsync(
+var generalChart = await service.GetTopRealEstateAgentsByListingsAsync(
     new RealEstateReport.Models.RealEstateAgentRankingOptions
     {
         IsGardenRequired = false,
@@ -45,7 +49,7 @@ var generalChart = await service.GetMostActiveRealEstateAgentsAsync(
         ListingType = RealEstateReport.Enums.EListingType.koop
     });
 
-var chartWithGarden = await service.GetMostActiveRealEstateAgentsAsync(
+var chartWithGarden = await service.GetTopRealEstateAgentsByListingsAsync(
     new RealEstateReport.Models.RealEstateAgentRankingOptions
     {
         IsGardenRequired = true,
@@ -54,15 +58,24 @@ var chartWithGarden = await service.GetMostActiveRealEstateAgentsAsync(
         ListingType = RealEstateReport.Enums.EListingType.koop
     });
 
+Console.WriteLine($"{"Agent",-40} {"Listings",10}");
+Console.WriteLine(new string('-', 55));
 
-//[TODO] Improve output
 foreach (var agent in chartWithGarden)
 {
-    Console.WriteLine($"{agent.Value.Name} - {agent.Value.ListingsCount}");
+    Console.WriteLine($"{agent.Value.Name,-40} {agent.Value.ListingsCount,10}");
 }
-Console.WriteLine("\n\n--------------------------------\n\n");
-//[TODO] Improve output
+
+Console.WriteLine($"{"Agent",-40} {"Listings",10}");
+Console.WriteLine(new string('-', 55));
+
 foreach (var agent in generalChart)
 {
-    Console.WriteLine($"{agent.Value.Name} - {agent.Value.ListingsCount}");
+    Console.WriteLine($"{agent.Value.Name,-40} {agent.Value.ListingsCount,10}");
 }
+Console.WriteLine("\n\n--------------------------------\n\n");
+
+Console.WriteLine("Execution completed.");
+Console.WriteLine("Press any key to close...");
+
+Console.ReadKey(intercept: true);
