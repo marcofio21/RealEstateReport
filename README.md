@@ -82,7 +82,6 @@ Listings are grouped by `MakelaarId`, and the number of listings per agent is us
 
 Built as a technical assignment to demonstrate:
 
-- .NET 8 development practices
 - External API integration
 - Clean architecture principles with separation of concerns
 - Pragmatic handling of external constraints (rate limiting, pagination, API reliability)
@@ -100,3 +99,13 @@ The API configuration is stored in `appsettings.json`:
     "Key": "YOUR_API_KEY"
   }
 }
+```
+
+---
+
+## Run the project
+
+From the root folder of the repository (where the `.csproj` or `.sln` is located), execute:
+
+```bash
+dotnet run
