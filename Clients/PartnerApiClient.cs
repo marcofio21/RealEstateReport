@@ -3,6 +3,7 @@ using RealEstateReport.Clients.Interfaces;
 using RealEstateReport.Models;
 using RealEstateReport.Models.Dtos;
 using RealEstateReport.Settings;
+using System.Net;
 using System.Text.Json;
 using System.Threading.RateLimiting;
 
@@ -41,20 +42,37 @@ namespace RealEstateReport.Clients
                        (options.IsGardenRequired ? "tuin/" : "") +
                        $"&page={page}&pagesize={options.PageSize}";
 
-            try {
-                using HttpResponseMessage response = await httpClient.GetAsync(url);
-                // The Partner API may occasionally throttle or reject requests even below the documented limit.
-                // A conservative rate limiter and basic retry strategy are used to mitigate transient failures.
-                response.EnsureSuccessStatusCode();
+            try
+            {
+                for (int attempt = 1; attempt <= 4; attempt++)
+                {
+                    using HttpResponseMessage response = await httpClient.GetAsync(url);
 
-                var json = await response.Content.ReadAsStringAsync();
-                if (string.IsNullOrWhiteSpace(json))
-                    throw new InvalidOperationException("Empty response from Partner API");
+                    if (response.StatusCode == HttpStatusCode.OK)
+                    {
+                        var json = await response.Content.ReadAsStringAsync();
+                        if (string.IsNullOrWhiteSpace(json))
+                            throw new InvalidOperationException("Empty response from Partner API");
 
-                return JsonSerializer.Deserialize<PartnerApiListingResponseDto>(
-                    json,
-                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
-                    ) ?? throw new InvalidOperationException("Failed to deserialize Partner API response");
+                        return JsonSerializer.Deserialize<PartnerApiListingResponseDto>(
+                            json,
+                            new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                            ) ?? throw new InvalidOperationException("Failed to deserialize Partner API response");
+                    }
+
+                    // The Partner API may occasionally return transient 401/429 responses even when
+                    // operating below the documented rate limit. A small retry strategy with incremental
+                    // delay is used to improve resiliency against temporary throttling or API instability.
+                    if ((response.StatusCode == HttpStatusCode.Unauthorized ||
+                         response.StatusCode == HttpStatusCode.TooManyRequests)
+                         && attempt < 3)
+                    {
+                        await Task.Delay(attempt * 1000);
+                        continue;
+                    }
+                    response.EnsureSuccessStatusCode();
+                }
+                throw new HttpRequestException("Partner API request failed after 3 retry attempts.");
             }
             catch (JsonException ex)
             {

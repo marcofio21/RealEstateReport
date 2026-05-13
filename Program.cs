@@ -28,7 +28,7 @@ var host = Host.CreateDefaultBuilder(args)
         {
             return new FixedWindowRateLimiter(new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 60,
+                PermitLimit = 80,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = int.MaxValue,
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst
