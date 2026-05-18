@@ -65,7 +65,7 @@ namespace RealEstateReport.Clients
                     // delay is used to improve resiliency against temporary throttling or API instability.
                     if ((response.StatusCode == HttpStatusCode.Unauthorized ||
                          response.StatusCode == HttpStatusCode.TooManyRequests)
-                         && attempt < 3)
+                         && attempt <= 3)
                     {
                         await Task.Delay(attempt * 1000);
                         continue;
